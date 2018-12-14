@@ -65,6 +65,18 @@
   :group 'org-pomodoro
   :type 'boolean)
 
+(defcustom org-pomodoro-desktop-notification t
+  "Determines whether notification via `notify-send' is enabled"
+  :group 'org-pomodoro
+  :type 'boolean
+  )
+
+(defcustom org-pomodoro-desktop-notification-command "notify-send"
+  "The command to send notifications to desktop"
+  :group 'org-pomodoro
+  :type '(string)
+  )
+
 ;; Pomodoro Values
 
 (defcustom org-pomodoro-length 25
@@ -327,7 +339,7 @@ or :break when starting a break.")
   (let ((delta-minutes (/ (float-time (time-subtract (current-time) org-pomodoro-last-clock-in)) 60)))
     (> delta-minutes org-pomodoro-expiry-time)))
 
-(defun org-pomodoro-sound-p (type)
+(defun org-pomodoro-notify-p (type)
   "Return whether to play sound of given TYPE."
   (cl-case type
     (:start org-pomodoro-start-sound-p)
@@ -378,9 +390,13 @@ or :break when starting a break.")
 			 ,@(delq nil (list args (shell-quote-argument (expand-file-name sound)))))
 		       " "))))))
 
+(defun org-pomodoro-desktop-notify (title message)
+  "Send a desktop notification"
+  (shell-command-to-string (concat org-pomodoro-desktop-notification-command " " title "\n" message)))
+
 (defun org-pomodoro-maybe-play-sound (type)
-  "Play an audio file specified by TYPE."
-  (when (org-pomodoro-sound-p type)
+  "Notify if the conditions are satisfied."
+  (when (org-pomodoro-notify-p type)
     (org-pomodoro-play-sound type)))
 
 (defun org-pomodoro-remaining-seconds ()
@@ -474,9 +490,15 @@ The argument STATE is optional.  The default state is `:pomodoro`."
   (org-pomodoro-update-mode-line)
   (org-agenda-maybe-redo))
 
-(defun org-pomodoro-notify (title message)
+(defun org-pomodoro-alert-notify (title mssage)
   "Send a notification with TITLE and MESSAGE using `alert'."
   (alert message :title title :category 'org-pomodoro))
+
+(defun org-pomodoro-notify (title message)
+  "Send a notification with TITLE and MESSAGE."
+  (org-pomodoro-alert-notify title message)
+  (if org-pomodoro-desktop-notification
+      (org-pomodoro-desktop-notify title message)))
 
 ;; Handlers for pomodoro events.
 
